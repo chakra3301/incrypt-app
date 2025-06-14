@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Steganography API Integration Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .preview {
+            max-width: 300px;
+            margin-top: 10px;
+        }
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Steganography API Integration</h1>
+        
+        <div class="form-group">
+            <label for="text">Text to Encode:</label>
+            <textarea id="text" rows="4" placeholder="Enter text to encode"></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="image">Select Image:</label>
+            <input type="file" id="image" accept="image/*">
+            <img id="preview" class="preview" style="display: none;">
+        </div>
+
+        <button onclick="encodeImage()">Encode Image</button>
+
+        <div id="result" class="form-group">
+            <h3>Result:</h3>
+            <img id="encodedImage" class="preview" style="display: none;">
+            <div id="error" class="error" style="display: none;"></div>
+            <div id="success" class="success" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Preview selected image
+        document.getElementById('image').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('preview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Function to encode image
+        async function encodeImage() {
+            const text = document.getElementById('text').value;
+            const imageFile = document.getElementById('image').files[0];
+            const errorDiv = document.getElementById('error');
+            const successDiv = document.getElementById('success');
+            const encodedImage = document.getElementById('encodedImage');
+
+            // Reset previous results
+            errorDiv.style.display = 'none';
+            successDiv.style.display = 'none';
+            encodedImage.style.display = 'none';
+
+            if (!text || !imageFile) {
+                errorDiv.textContent = 'Please provide both text and an image';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('text', text);
+            formData.append('image', imageFile);
+
+            try {
+                // Replace with your API URL
+                const response = await fetch('http://localhost:8000/encode', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to encode image');
+                }
+
+                // Get the encoded image
+                const blob = await response.blob();
+                const imageUrl = URL.createObjectURL(blob);
+                
+                // Display the result
+                encodedImage.src = imageUrl;
+                encodedImage.style.display = 'block';
+                successDiv.textContent = 'Image encoded successfully!';
+                successDiv.style.display = 'block';
+            } catch (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html> 
