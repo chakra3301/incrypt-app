@@ -265,7 +265,7 @@ def make_parser():
     e.add_argument("--bits", type=int, default=8, choices=range(1,9), 
                    help="Number of LSBs per color channel to use for encoding (1-8, default: 8)")
     e.add_argument("--zstd", type=int, default=22, choices=range(1,23), 
-                   help="Zstandard compression level (1-22, default: 22)")
+                   help="Zstandard compression level (1-22, default: 3)")
     e.add_argument("--dots", type=int, help="Number of dots for pointillist painting (default: auto based on canvas size)")
     e.add_argument("--jitter", type=int, default=6, help="Color noise ±value for dots (default: 6)")
     e.add_argument("--radius", type=int, default=1, help="Dot half-size (radius, default: 1)")
@@ -279,13 +279,13 @@ def make_parser():
     v.add_argument("--cache", default=os.path.join(os.path.expanduser("~"), ".cache", "gpt1_stego"), 
                    help="Directory for caching the GPT-1 checkpoint (default: ~/.cache/gpt1_stego)")
     return p
-    
+
 def encode_text_into_image(text: str, src_img_path: str, out_img_path: str, bits: int = 8):
     """
     Embeds user-provided text (instead of GPT-1) into a pointillist canvas.
     """
     raw = text.encode("utf-8")
-    comp = zstd.ZstdCompressor(level=22, threads=os.cpu_count() or 1).compress(raw)
+    comp = zstd.ZstdCompressor(level=3, threads=os.cpu_count() or 1).compress(raw)
     size_bytes = len(comp)
 
     bytes_per_pixel_payload = (3 * bits) / 8.0
@@ -304,6 +304,7 @@ def encode_text_into_image(text: str, src_img_path: str, out_img_path: str, bits
     stego_img = embed(payload_to_embed, painted_canvas_array, bits)
 
     stego_img.save(out_img_path, format="PNG", compress_level=9)
+
 if __name__ == "__main__":
     args = make_parser().parse_args()
     
