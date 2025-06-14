@@ -20,3 +20,9 @@ async def encode(text: str = Form(...), image: UploadFile = Form(...)):
     encode_text_into_image(text, input_path, output_path)
 
     return FileResponse(output_path, media_type="image/png", filename="encoded.png")
+
+    from fastapi.responses import RedirectResponse
+
+@app.get("/", include_in_schema=False)
+def read_root():
+    return RedirectResponse(url="/docs")
