@@ -264,7 +264,7 @@ def make_parser():
     e.add_argument("out",   help="Path for the output steganographic PNG image")
     e.add_argument("--bits", type=int, default=8, choices=range(1,9), 
                    help="Number of LSBs per color channel to use for encoding (1-8, default: 8)")
-    e.add_argument("--zstd", type=int, default=22, choices=range(1,23), 
+    e.add_argument("--zstd", type=int, default=3, choices=range(1,23), 
                    help="Zstandard compression level (1-22, default: 3)")
     e.add_argument("--dots", type=int, help="Number of dots for pointillist painting (default: auto based on canvas size)")
     e.add_argument("--jitter", type=int, default=6, help="Color noise ±value for dots (default: 6)")
@@ -282,28 +282,41 @@ def make_parser():
 
 def encode_text_into_image(text: str, src_img_path: str, out_img_path: str, bits: int = 8):
     """
-    Embeds user-provided text (instead of GPT-1) into a pointillist canvas.
+    Encode text into an image using LSB steganography.
+    
+    Args:
+        text (str): The text to encode
+        src_img_path (str): Path to the source image
+        out_img_path (str): Path where the encoded image will be saved
+        bits (int): Number of LSBs to use for encoding (default: 8)
+    
+    Raises:
+        ValueError: If the text is too long for the image capacity
     """
-    raw = text.encode("utf-8")
-    comp = zstd.ZstdCompressor(level=3, threads=os.cpu_count() or 1).compress(raw)
-    size_bytes = len(comp)
-
-    bytes_per_pixel_payload = (3 * bits) / 8.0
-    min_total_pixels = math.ceil(size_bytes / bytes_per_pixel_payload)
-    side = max(2, math.ceil(math.sqrt(min_total_pixels)))
-    side += side % 2  # ensure even for symmetry
-
-    canvas_cap_bytes = capacity(side, side, bits)
-    if size_bytes > canvas_cap_bytes:
-        raise ValueError("Text too long for selected encoding depth and canvas size")
-
-    payload_to_embed = comp + b"\0" * (canvas_cap_bytes - size_bytes)
-    dots = max(1, side * side // 16)
-
-    painted_canvas_array = paint_canvas(Image.open(src_img_path), side, dots, jitter=6, dot_r=1)
-    stego_img = embed(payload_to_embed, painted_canvas_array, bits)
-
-    stego_img.save(out_img_path, format="PNG", compress_level=9)
+    # Convert text to bytes
+    text_bytes = text.encode('utf-8')
+    
+    # Open and process the source image
+    src_img = Image.open(src_img_path)
+    src_np = np.asarray(src_img.convert("RGB"), np.uint8)
+    
+    # Calculate capacity
+    w, h = src_np.shape[:2]
+    max_bytes = capacity(w, h, bits)
+    
+    if len(text_bytes) > max_bytes:
+        raise ValueError(f"Text too long. Maximum capacity is {max_bytes} bytes, but text is {len(text_bytes)} bytes")
+    
+    # Create a copy of the source image for encoding
+    canvas = src_np.copy()
+    
+    # Embed the text
+    encoded_img = embed(text_bytes, canvas, bits)
+    
+    # Save the result
+    encoded_img.save(out_img_path, format="PNG", compress_level=9)
+    
+    return True
 
 if __name__ == "__main__":
     args = make_parser().parse_args()
