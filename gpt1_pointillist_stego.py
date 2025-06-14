@@ -279,7 +279,31 @@ def make_parser():
     v.add_argument("--cache", default=os.path.join(os.path.expanduser("~"), ".cache", "gpt1_stego"), 
                    help="Directory for caching the GPT-1 checkpoint (default: ~/.cache/gpt1_stego)")
     return p
+    
+def encode_text_into_image(text: str, src_img_path: str, out_img_path: str, bits: int = 8):
+    """
+    Embeds user-provided text (instead of GPT-1) into a pointillist canvas.
+    """
+    raw = text.encode("utf-8")
+    comp = zstd.ZstdCompressor(level=22, threads=os.cpu_count() or 1).compress(raw)
+    size_bytes = len(comp)
 
+    bytes_per_pixel_payload = (3 * bits) / 8.0
+    min_total_pixels = math.ceil(size_bytes / bytes_per_pixel_payload)
+    side = max(2, math.ceil(math.sqrt(min_total_pixels)))
+    side += side % 2  # ensure even for symmetry
+
+    canvas_cap_bytes = capacity(side, side, bits)
+    if size_bytes > canvas_cap_bytes:
+        raise ValueError("Text too long for selected encoding depth and canvas size")
+
+    payload_to_embed = comp + b"\0" * (canvas_cap_bytes - size_bytes)
+    dots = max(1, side * side // 16)
+
+    painted_canvas_array = paint_canvas(Image.open(src_img_path), side, dots, jitter=6, dot_r=1)
+    stego_img = embed(payload_to_embed, painted_canvas_array, bits)
+
+    stego_img.save(out_img_path, format="PNG", compress_level=9)
 if __name__ == "__main__":
     args = make_parser().parse_args()
     
