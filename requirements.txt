@@ -3,6 +3,5 @@ uvicorn
 pillow
 numpy
 tqdm
-zstd
+transformers
 torch
-OpenAIGPTModel
