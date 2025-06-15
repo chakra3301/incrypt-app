@@ -280,7 +280,7 @@ def make_parser():
                    help="Directory for caching the GPT-1 checkpoint (default: ~/.cache/gpt1_stego)")
     return p
 
-ddef encode_text_into_image(text: str, src_img_path: str, out_img_path: str, bits: int = 1):
+def encode_text_into_image(text: str, src_img_path: str, out_img_path: str, bits: int = 1):
     """
     Encode short text into a pointillist canvas generated from a source image.
 
@@ -321,7 +321,7 @@ ddef encode_text_into_image(text: str, src_img_path: str, out_img_path: str, bit
 
     # Save result
     encoded_img.save(out_img_path, format="PNG", compress_level=9)
-    
+
     return True
 
 if __name__ == "__main__":
