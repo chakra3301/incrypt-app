@@ -280,40 +280,46 @@ def make_parser():
                    help="Directory for caching the GPT-1 checkpoint (default: ~/.cache/gpt1_stego)")
     return p
 
-def encode_text_into_image(text: str, src_img_path: str, out_img_path: str, bits: int = 8):
+ddef encode_text_into_image(text: str, src_img_path: str, out_img_path: str, bits: int = 1):
     """
-    Encode text into an image using LSB steganography.
-    
+    Encode short text into a pointillist canvas generated from a source image.
+
     Args:
         text (str): The text to encode
-        src_img_path (str): Path to the source image
-        out_img_path (str): Path where the encoded image will be saved
-        bits (int): Number of LSBs to use for encoding (default: 8)
-    
-    Raises:
-        ValueError: If the text is too long for the image capacity
+        src_img_path (str): Path to source portrait image
+        out_img_path (str): Path to save encoded image
+        bits (int): Number of least significant bits (LSBs) to use per color channel (default: 1)
     """
     # Convert text to bytes
     text_bytes = text.encode('utf-8')
-    
-    # Open and process the source image
+    size_bytes = len(text_bytes)
+
+    if bits < 1 or bits > 8:
+        raise ValueError("Bits must be between 1 and 8.")
+
+    # Calculate required canvas size
+    bytes_per_pixel_payload = (3 * bits) / 8.0
+    min_total_pixels = math.ceil(size_bytes / bytes_per_pixel_payload)
+    side = math.ceil(math.sqrt(min_total_pixels))
+    if side % 2 != 0:
+        side += 1  # make it even for symmetry
+
+    max_bytes = capacity(side, side, bits)
+    if size_bytes > max_bytes:
+        raise ValueError(f"Text too long. Max capacity is {max_bytes} bytes, got {size_bytes} bytes.")
+
+    # Pad payload to max
+    payload = text_bytes + b"\0" * (max_bytes - size_bytes)
+
+    # Load source image and paint canvas
     src_img = Image.open(src_img_path)
-    src_np = np.asarray(src_img.convert("RGB"), np.uint8)
-    
-    # Calculate capacity
-    w, h = src_np.shape[:2]
-    max_bytes = capacity(w, h, bits)
-    
-    if len(text_bytes) > max_bytes:
-        raise ValueError(f"Text too long. Maximum capacity is {max_bytes} bytes, but text is {len(text_bytes)} bytes")
-    
-    # Create a copy of the source image for encoding
-    canvas = src_np.copy()
-    
-    # Embed the text
-    encoded_img = embed(text_bytes, canvas, bits)
-    
-    # Save the result
+    dots = max(1, (side * side) // 16)
+    canvas_array = paint_canvas(src_img, side, dots, jitter=6, dot_r=1)
+
+    # Embed data
+    encoded_img = embed(payload, canvas_array, bits)
+
+    # Save result
     encoded_img.save(out_img_path, format="PNG", compress_level=9)
     
     return True
